@@ -1,0 +1,72 @@
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+enum OrganizationRole {
+  ORG_ADMIN
+  ORG_USER
+  READ_ONLY
+}
+
+model Organization {
+  id        String   @id @default(uuid()) @db.Uuid
+  name      String   @unique @db.Text
+  createdAt DateTime @default(now()) @map("created_at") @db.Timestamptz(6)
+  updatedAt DateTime @updatedAt @map("updated_at") @db.Timestamptz(6)
+
+  memberships OrganizationMembership[]
+  projects    Project[]
+
+  @@map("organizations")
+}
+
+model User {
+  id           String   @id @default(uuid()) @db.Uuid
+  email        String   @unique @db.Text
+  passwordHash String   @map("password_hash") @db.Text
+  isActive     Boolean  @default(true) @map("is_active")
+  createdAt    DateTime @default(now()) @map("created_at") @db.Timestamptz(6)
+  updatedAt    DateTime @updatedAt @map("updated_at") @db.Timestamptz(6)
+
+  memberships OrganizationMembership[]
+  createdProjects Project[] @relation("projects_created_by")
+
+  @@map("users")
+}
+
+model OrganizationMembership {
+  id             String           @id @default(uuid()) @db.Uuid
+  organizationId String           @map("organization_id") @db.Uuid
+  userId         String           @map("user_id") @db.Uuid
+  role           OrganizationRole @db.Text
+  createdAt      DateTime         @default(now()) @map("created_at") @db.Timestamptz(6)
+
+  organization Organization @relation(fields: [organizationId], references: [id], onDelete: Cascade)
+  user         User         @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@unique([organizationId, userId], map: "organization_memberships_org_user_unique")
+  @@index([userId], map: "organization_memberships_user_id_idx")
+  @@map("organization_memberships")
+}
+
+model Project {
+  id              String   @id @default(uuid()) @db.Uuid
+  organizationId  String   @map("organization_id") @db.Uuid
+  name            String   @db.Text
+  description     String?  @db.Text
+  createdByUserId String   @map("created_by_user_id") @db.Uuid
+  createdAt       DateTime @default(now()) @map("created_at") @db.Timestamptz(6)
+  updatedAt       DateTime @updatedAt @map("updated_at") @db.Timestamptz(6)
+
+  organization Organization @relation(fields: [organizationId], references: [id], onDelete: Cascade)
+  createdBy    User         @relation("projects_created_by", fields: [createdByUserId], references: [id], onDelete: Restrict)
+
+  @@index([organizationId, id], map: "projects_org_id_id_idx")
+  @@index([organizationId, createdAt], map: "projects_org_created_at_idx")
+  @@map("projects")
+}
