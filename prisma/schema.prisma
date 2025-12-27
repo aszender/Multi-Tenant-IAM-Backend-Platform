@@ -43,7 +43,7 @@ model OrganizationMembership {
   id             String           @id @default(uuid()) @db.Uuid
   organizationId String           @map("organization_id") @db.Uuid
   userId         String           @map("user_id") @db.Uuid
-  role           OrganizationRole @db.Text
+  role           OrganizationRole
   createdAt      DateTime         @default(now()) @map("created_at") @db.Timestamptz(6)
 
   organization Organization @relation(fields: [organizationId], references: [id], onDelete: Cascade)
