@@ -5,12 +5,20 @@ import { DatabaseModule } from './database/database.module';
 import { AuthModule } from './modules/auth/auth.module';
 import { OrganizationsModule } from './modules/organizations/organizations.module';
 import { ProjectsModule } from './modules/projects/projects.module';
+import { UsersModule } from './modules/users/users.module';
 import { RolesGuard } from './common/guards/roles.guard';
 
 import { AppController } from './app.controller';
 
 @Module({
-  imports: [AppConfigModule, DatabaseModule, AuthModule, OrganizationsModule, ProjectsModule],
+  imports: [
+    AppConfigModule,
+    DatabaseModule,
+    AuthModule,
+    OrganizationsModule,
+    ProjectsModule,
+    UsersModule,
+  ],
   controllers: [AppController],
   providers: [RolesGuard],
 })
