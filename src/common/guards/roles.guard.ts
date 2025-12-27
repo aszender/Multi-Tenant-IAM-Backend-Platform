@@ -1,8 +1,8 @@
 import { CanActivate, ExecutionContext, Injectable } from '@nestjs/common';
 import { Reflector } from '@nestjs/core';
 
-import { ROLES_KEY, type OrganizationRole } from '../decorators/roles.decorator';
 import type { AuthenticatedRequestUser } from '../../modules/auth/types/authenticated-request-user';
+import { ROLES_KEY, type OrganizationRole } from '../decorators/roles.decorator';
 
 const roleRank: Record<OrganizationRole, number> = {
   ORG_ADMIN: 3,

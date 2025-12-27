@@ -1,8 +1,8 @@
 import { BadRequestException, ForbiddenException, NotFoundException } from '@nestjs/common';
 import { Test } from '@nestjs/testing';
 
-import type { AuthenticatedRequestUser } from '../auth/types/authenticated-request-user';
 import { PasswordService } from '../auth/password.service';
+import type { AuthenticatedRequestUser } from '../auth/types/authenticated-request-user';
 
 import { UsersRepository } from './users.repository';
 import { UsersService } from './users.service';

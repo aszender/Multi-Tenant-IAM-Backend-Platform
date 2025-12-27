@@ -2,11 +2,11 @@ import { Body, Controller, Get, Post, UseGuards } from '@nestjs/common';
 
 import { CurrentUser } from '../../common/decorators/current-user.decorator';
 
-import { JwtAuthGuard } from './guards/jwt-auth.guard';
 import { AuthService } from './auth.service';
 import { LoginRequestDto, LoginResponseDto } from './dto/login.dto';
 import { MeResponseDto } from './dto/me.dto';
 import { RegisterRequestDto, RegisterResponseDto } from './dto/register.dto';
+import { JwtAuthGuard } from './guards/jwt-auth.guard';
 import type { AuthenticatedRequestUser } from './types/authenticated-request-user';
 
 @Controller('auth')

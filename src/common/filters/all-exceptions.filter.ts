@@ -15,6 +15,37 @@ type ErrorResponseBody = {
   timestamp: string;
 };
 
+function extractHttpExceptionMessage(responseBody: unknown, fallback: string): string {
+  if (typeof responseBody === 'string') {
+    return responseBody;
+  }
+
+  if (typeof responseBody === 'object' && responseBody !== null) {
+    const maybe = responseBody as Record<string, unknown>;
+    const message = maybe.message;
+
+    if (Array.isArray(message)) {
+      return message.map((m) => String(m)).join('; ');
+    }
+    if (typeof message === 'string') {
+      return message;
+    }
+  }
+
+  return fallback;
+}
+
+function extractHttpExceptionError(responseBody: unknown, fallback: string): string {
+  if (typeof responseBody === 'object' && responseBody !== null) {
+    const maybe = responseBody as Record<string, unknown>;
+    const error = maybe.error;
+    if (typeof error === 'string') {
+      return error;
+    }
+  }
+  return fallback;
+}
+
 @Catch()
 export class AllExceptionsFilter implements ExceptionFilter {
   catch(exception: unknown, host: ArgumentsHost) {
@@ -29,19 +60,8 @@ export class AllExceptionsFilter implements ExceptionFilter {
       const statusCode = exception.getStatus();
       const responseBody = exception.getResponse();
 
-      const message =
-        typeof responseBody === 'string'
-          ? responseBody
-          : (responseBody as any)?.message
-            ? Array.isArray((responseBody as any).message)
-              ? (responseBody as any).message.join('; ')
-              : String((responseBody as any).message)
-            : exception.message;
-
-      const error =
-        typeof responseBody === 'object' && (responseBody as any)?.error
-          ? String((responseBody as any).error)
-          : exception.name;
+      const message = extractHttpExceptionMessage(responseBody, exception.message);
+      const error = extractHttpExceptionError(responseBody, exception.name);
 
       const body: ErrorResponseBody = {
         statusCode,

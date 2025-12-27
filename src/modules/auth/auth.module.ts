@@ -1,15 +1,16 @@
 import { Module } from '@nestjs/common';
 import { ConfigService } from '@nestjs/config';
 import { JwtModule } from '@nestjs/jwt';
+
 import type { Env } from '../../config/env.schema';
 
 import { AuthController } from './auth.controller';
 import { AuthService } from './auth.service';
 import { PasswordService } from './password.service';
-import { JwtStrategy } from './strategies/jwt.strategy';
 import { MembershipsRepository } from './repositories/memberships.repository';
 import { OrganizationsRepository } from './repositories/organizations.repository';
 import { UsersRepository } from './repositories/users.repository';
+import { JwtStrategy } from './strategies/jwt.strategy';
 
 @Module({
   imports: [

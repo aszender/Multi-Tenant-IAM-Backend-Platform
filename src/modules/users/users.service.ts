@@ -6,8 +6,8 @@ import {
 } from '@nestjs/common';
 import { Prisma, type OrganizationRole } from '@prisma/client';
 
-import type { AuthenticatedRequestUser } from '../auth/types/authenticated-request-user';
 import { PasswordService } from '../auth/password.service';
+import type { AuthenticatedRequestUser } from '../auth/types/authenticated-request-user';
 
 import { UsersRepository } from './users.repository';
 

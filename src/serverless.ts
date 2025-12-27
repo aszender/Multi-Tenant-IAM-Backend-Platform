@@ -2,12 +2,22 @@ import 'reflect-metadata';
 
 import { ValidationPipe } from '@nestjs/common';
 import { NestFactory } from '@nestjs/core';
+import { ExpressAdapter } from '@nestjs/platform-express';
+import type { Express } from 'express';
+import express from 'express';
 
 import { AppModule } from './app.module';
 import { AllExceptionsFilter } from './common/filters/all-exceptions.filter';
 
-async function bootstrap() {
-  const app = await NestFactory.create(AppModule, {
+let cachedServer: Express | null = null;
+
+export async function getServer(): Promise<Express> {
+  if (cachedServer) {
+    return cachedServer;
+  }
+
+  const server = express();
+  const app = await NestFactory.create(AppModule, new ExpressAdapter(server), {
     bufferLogs: true,
   });
 
@@ -19,11 +29,9 @@ async function bootstrap() {
       transformOptions: { enableImplicitConversion: false },
     }),
   );
-
   app.useGlobalFilters(new AllExceptionsFilter());
 
-  const port = process.env.PORT ? Number(process.env.PORT) : 3000;
-  await app.listen(port);
+  await app.init();
+  cachedServer = server;
+  return server;
 }
-
-void bootstrap();

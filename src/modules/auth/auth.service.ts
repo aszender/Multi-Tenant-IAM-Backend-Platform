@@ -1,16 +1,16 @@
 import { BadRequestException, Injectable, UnauthorizedException } from '@nestjs/common';
-import type { OrganizationRole } from '@prisma/client';
 import { JwtService } from '@nestjs/jwt';
+import type { OrganizationRole } from '@prisma/client';
 
 import { PrismaService } from '../../database/prisma.service';
 
 import { LoginRequestDto } from './dto/login.dto';
 import { RegisterRequestDto } from './dto/register.dto';
-import type { JwtPayload } from './types/jwt-payload';
 import { PasswordService } from './password.service';
 import { MembershipsRepository } from './repositories/memberships.repository';
 import { OrganizationsRepository } from './repositories/organizations.repository';
 import { UsersRepository } from './repositories/users.repository';
+import type { JwtPayload } from './types/jwt-payload';
 
 @Injectable()
 export class AuthService {
