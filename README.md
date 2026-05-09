@@ -1,369 +1,163 @@
-# Multi-Tenant IAM Backend Platform (NestJS + PostgreSQL)
+# Multi-Tenant IAM Backend Platform
 
-A production-quality backend portfolio project demonstrating **multi-tenancy**, **secure authentication**, and **enterprise-grade authorization** patterns using **NestJS + TypeScript**, **PostgreSQL**, and **JWT**.
+Production-oriented demo backend for a multi-tenant IAM platform built with NestJS, TypeScript, PostgreSQL, Prisma, JWT authentication, tenant-scoped RBAC permissions, audit logging, and tests.
 
-This project is intentionally backend-only (no frontend) and focuses on:
-- Clean modular architecture and maintainable code
-- IAM concepts: users, organizations (tenants), roles, permissions boundaries
-- Secure defaults: validation, error handling, least privilege
-- Cloud & DevOps readiness: Docker, CI, and Vercel deployment
+This is not a commercial IAM product and does not claim NIST compliance. It is designed to demonstrate senior backend architecture, tenant isolation, authorization, auditability, and testability for identity, integrations, enterprise SaaS, and platform engineering interviews.
 
----
+## Why This Exists
 
-## Table of contents
-
-- [Goals](#goals)
-- [Core features](#core-features)
-- [Architecture](#architecture)
-- [Domain model](#domain-model)
-- [Auth & RBAC flow](#auth--rbac-flow)
-- [Multi-tenancy model](#multi-tenancy-model)
-- [Database schema](#database-schema)
-- [API endpoints (high level)](#api-endpoints-high-level)
-- [Configuration](#configuration)
-- [How to run locally (Docker)](#how-to-run-locally-docker)
-- [How to run locally (non-Docker)](#how-to-run-locally-non-docker)
-- [Migrations](#migrations)
-- [Tests](#tests)
-- [CI (GitHub Actions)](#ci-github-actions)
-- [Deploy to Vercel](#deploy-to-vercel)
-- [Security considerations](#security-considerations)
-- [Project roadmap (modules)](#project-roadmap-modules)
-
----
-
-## Goals
-
-- Provide a **multi-tenant backend** where all business data is isolated by **organization**.
-- Demonstrate **authentication** (register/login) and **authorization** (RBAC with org roles).
-- Use a **Controller → Service → Repository** pattern with DTOs and centralized error handling.
-- Be **deployable** with minimal changes to Vercel and compatible with **Supabase** or **AWS Free Tier Postgres**.
-
----
-
-## Core features
-
-1. **Organizations (tenants)**
-   - An Organization is the tenant boundary.
-
-2. **Users belong to organizations**
-   - Users authenticate globally, but data access is scoped to one organization.
-
-3. **RBAC**
-   - Roles: `ORG_ADMIN`, `ORG_USER`, `READ_ONLY`.
-
-4. **Secure authentication**
-   - Register, login, JWT access token.
-
-5. **Protected business domain: Projects**
-   - Standard CRUD, scoped to organization.
-
-6. **Tenant isolation enforcement**
-   - Users can only access data within their organization.
-
-7. **Validation and error handling**
-   - DTO validation, consistent error responses, centralized exception filtering.
-
----
+IAM systems fail in predictable places: weak credential handling, broken object-level authorization, confused tenant context, missing audit trails, and tests that only cover happy paths. This repository focuses on those risks with a compact but production-shaped backend.
 
 ## Architecture
 
-### High-level structure
-
-- **Presentation layer (HTTP)**
-  - NestJS controllers
-  - DTOs (request/response)
-  - Guards (JWT auth + RBAC)
-  - Pipes (validation)
-
-- **Application layer**
-  - Services (use-cases)
-  - Orchestration and business rules
-
-- **Infrastructure layer**
-  - Repositories (data access)
-  - Database module (Postgres connection)
-  - Migrations
-
-### NestJS modules
-
-- `AuthModule` — register/login, password hashing, JWT signing
-- `OrganizationsModule` — tenant entities and admin operations
-- `UsersModule` — user management within tenant scope
-- `ProjectsModule` — protected domain
-- `ConfigModule` — strongly-validated environment config
-- `DatabaseModule` — Postgres + migrations
-
-### Controller → Service → Repository
-
-- Controllers:
-  - validate incoming requests
-  - map HTTP inputs to DTOs
-  - return stable response DTOs
-
-- Services:
-  - enforce business invariants
-  - apply authorization decisions (in cooperation with guards)
-  - call repositories
-
-- Repositories:
-  - own persistence logic
-  - ensure queries are tenant-scoped
-
-### Centralized error handling
-
-- A global exception filter provides:
-  - consistent error response shape
-  - safe messages (no leaking internals)
-  - traceability via request correlation IDs (planned)
-
----
-
-## Domain model
-
-### Entities
-
-- **Organization**
-  - Represents a tenant.
-
-- **User**
-  - Global identity that authenticates via email/password.
-
-- **OrganizationMembership**
-  - Connects a user to an organization.
-  - Stores role for that user inside that organization.
-
-- **Project**
-  - A business entity owned by an organization.
-
----
-
-## Auth & RBAC flow
-
-### Authentication (JWT)
-
-1. Client calls `POST /auth/register` with email, password, org name (or orgId depending on endpoint choice).
-2. Service:
-   - hashes password (bcrypt/argon2; recommended argon2)
-   - creates user
-   - creates organization and membership (first user becomes `ORG_ADMIN`)
-3. Client calls `POST /auth/login` with email/password.
-4. Service verifies password and issues JWT:
-   - `sub`: userId
-   - `orgId`: active organization context
-   - `roles`: derived from membership for that org
-
-### Authorization (RBAC)
-
-- `JwtAuthGuard`:
-  - verifies JWT signature
-  - attaches `request.user` (subject, orgId, roles)
-
-- `RolesGuard`:
-  - reads required roles from `@Roles(...)`
-  - checks whether request user has sufficient role
-
-### Typical protected request
-
-1. Client sends `Authorization: Bearer <token>`.
-2. JWT guard authenticates and sets `request.user`.
-3. Roles guard authorizes.
-4. Service executes use-case.
-5. Repository executes tenant-scoped query using `orgId`.
-
----
-
-## Multi-tenancy model
-
-This project uses **organization-based multi-tenancy** (single database, shared schema), enforced by:
-
-- **JWT includes `orgId`** representing the active tenant context.
-- **All domain queries include `orgId` predicates**.
-- **Guard/service checks** prevent cross-tenant access.
-- **Database constraints/indexes** support tenant-scoped access patterns.
-
-This design maps cleanly to Supabase (managed Postgres) and AWS RDS Free Tier.
-
----
-
-## Database schema
-
-> Exact SQL migrations will be provided in the migrations deliverable.
-
-### Tables
-
-#### `organizations`
-- `id` (uuid, pk)
-- `name` (text, unique per tenant naming rules)
-- `created_at` (timestamptz)
-- `updated_at` (timestamptz)
-
-#### `users`
-- `id` (uuid, pk)
-- `email` (citext/text, unique)
-- `password_hash` (text)
-- `is_active` (boolean)
-- `created_at` (timestamptz)
-- `updated_at` (timestamptz)
-
-#### `organization_memberships`
-- `id` (uuid, pk)
-- `organization_id` (uuid, fk -> organizations.id)
-- `user_id` (uuid, fk -> users.id)
-- `role` (enum/text: ORG_ADMIN | ORG_USER | READ_ONLY)
-- `created_at` (timestamptz)
-
-Constraints:
-- unique `(organization_id, user_id)`
-
-#### `projects`
-- `id` (uuid, pk)
-- `organization_id` (uuid, fk -> organizations.id)
-- `name` (text)
-- `description` (text, nullable)
-- `created_by_user_id` (uuid, fk -> users.id)
-- `created_at` (timestamptz)
-- `updated_at` (timestamptz)
-
-Indexes:
-- `(organization_id, id)`
-- `(organization_id, created_at)`
-
----
-
-## API endpoints (high level)
-
-### Auth
-- `POST /auth/register` — create org + admin user (or join flow if enabled later)
-- `POST /auth/login` — returns JWT access token
-- `GET /auth/me` — returns current user + active org + role
-
-### Organizations
-- `GET /organizations` — list organizations for current user (membership-based)
-- `POST /organizations` — create organization (admin only)
-
-### Projects (tenant-scoped)
-- `POST /projects` — create project (`ORG_ADMIN`/`ORG_USER`)
-- `GET /projects` — list projects within org (all roles)
-- `GET /projects/:id` — read a project within org (all roles)
-- `PATCH /projects/:id` — update (`ORG_ADMIN`/`ORG_USER`)
-- `DELETE /projects/:id` — delete (`ORG_ADMIN`)
-
----
-
-## Configuration
-
-The application uses a dedicated config module to:
-- load env vars
-- validate at startup
-- provide strongly typed access to settings
-
-### Example env variables
-
-- `NODE_ENV` — `development | test | production`
-- `PORT` — default 3000
-- `DATABASE_URL` — Postgres connection string
-- `JWT_ACCESS_SECRET` — strong secret
-- `JWT_ACCESS_TTL_SECONDS` — e.g. 900
-
-A `.env.example` file will be provided.
-
----
-
-## How to run locally (Docker)
-
-> A `docker-compose.yml` will run the API and a Postgres instance.
-
-1. Copy env file:
-   - `cp .env.example .env`
-2. Start services:
-   - `docker compose up --build`
-3. Run migrations (command provided in repository scripts):
-   - `npm run db:migrate`
-4. API will be available at:
-   - `http://localhost:3000`
-
----
-
-## How to run locally (non-Docker)
-
-1. Install dependencies:
-   - `npm ci`
-2. Start Postgres (local or Supabase) and set `DATABASE_URL`.
-3. Run migrations:
-   - `npm run db:migrate`
-4. Start dev server:
-   - `npm run start:dev`
-
----
-
-## Migrations
-
-- Database schema changes are managed via migrations.
-- Migrations are designed to be deterministic and safe to run in CI and production.
-
-Commands (to be implemented):
-- `npm run db:migrate` — applies migrations
-- `npm run db:rollback` — rolls back last migration (where supported)
-
----
-
-## Tests
-
-Basic automated tests will include:
-- unit tests for services (auth and RBAC checks)
-- integration tests for controllers with a test database
-
-Commands:
-- `npm test`
-- `npm run test:e2e`
-
----
-
-## CI (GitHub Actions)
-
-CI pipeline will:
-- install dependencies (`npm ci`)
-- run lint/typecheck
-- run tests
-- optionally run migrations against a CI Postgres service
-
-This ensures changes are safe and keeps the repository portfolio-grade.
-
----
-
-## Deploy to Vercel
-
-This API is designed to be deployable to Vercel with these constraints:
-
-- Ensure environment variables are configured in Vercel:
-  - `DATABASE_URL`
-  - `JWT_ACCESS_SECRET`
-  - `JWT_ACCESS_TTL_SECONDS`
-
-- Use a managed Postgres provider:
-  - Supabase Postgres (recommended)
-  - AWS RDS Free Tier Postgres
-
-- Migrations strategy:
-  - run migrations as part of CI/CD before deployment, or as a controlled release step
-
-Notes:
-- Vercel serverless environments can be sensitive to connection pooling; using a provider/pooler is recommended.
-
----
-
-## Security considerations
-
-This project aims for strong security defaults:
-
-- **Passwords**: stored as salted hashes using a modern KDF (argon2 recommended).
-- **JWT secrets**: must be long and random; rotated via environment management.
-- **Least privilege**: role checks enforced via guards and service-level invariants.
-- **Tenant isolation**: every query is scoped by `organization_id`.
-- **Input validation**: DTO validation rejects unknown/invalid fields.
-- **Error handling**: centralized filter prevents leaking stack traces.
-- **Auditability** (planned within scope): record `created_by_user_id` for domain entities.
-- **Rate limiting** (optional if time permits): protect login endpoints.
-
----
+```mermaid
+flowchart LR
+  Client["API Client"] --> HTTP["NestJS Controllers / DTOs"]
+  HTTP --> Guards["JWT + Permission Guards"]
+  Guards --> Services["Application Services"]
+  Services --> Repos["Tenant-Scoped Repositories"]
+  Repos --> DB[("PostgreSQL via Prisma")]
+  Services --> Audit["Audit Service"]
+```
+
+Main modules:
+- `auth`: register, login, refresh token rotation, logout, current user.
+- `tenants` / `organizations`: tenant membership context.
+- `users` / `memberships`: tenant-scoped user and membership management.
+- `roles` / `permissions`: tenant role definitions and permission catalog.
+- `projects`: sample tenant-owned resource used to prove object-level authorization.
+- `audit`: security event storage and tenant-scoped audit reads.
+- `health`: liveness, readiness, and basic Prometheus-style metrics.
+- `database`, `config`, `common`: Prisma, env validation, guards, filters, decorators.
+
+## Security Model
+
+- Passwords are hashed with Argon2.
+- Access tokens are short-lived JWTs containing `sub`, active tenant id, email, and tenant role.
+- Refresh tokens are opaque random values stored only as SHA-256 hashes and rotated on use.
+- Route authorization uses explicit permissions such as `projects:read` and `users:manage`.
+- Tenant-owned repository methods require `organizationId` and object id together.
+- Cross-tenant object ids return not found instead of leaking object existence.
+- Security-sensitive actions are written to `audit_events`.
+- Global validation rejects unknown DTO fields.
+- Error responses use a consistent safe shape with correlation ids.
+
+The password and session guidance is aligned conceptually with modern digital identity recommendations, including NIST SP 800-63-4 concepts such as verifier-side protections and avoiding overclaiming compliance.
+
+## Tenant Isolation
+
+This project uses a shared PostgreSQL schema with `organization_id` as the tenant boundary. Tenant isolation is enforced at several layers:
+
+- JWT establishes the active tenant context.
+- Guards validate authentication and permissions.
+- Services enforce invariants such as "do not remove the last tenant admin."
+- Repositories scope reads, updates, and deletes by both tenant id and resource id.
+- Database indexes and unique constraints include `organization_id` where tenant uniqueness matters.
+- Tests assert that tenant A cannot read tenant B project ids.
+
+## Authorization Model
+
+Built-in tenant roles:
+- `ORG_ADMIN`: full tenant administration and audit read access.
+- `ORG_USER`: user/project read and project write access.
+- `READ_ONLY`: read-only tenant/project access.
+
+Roles are tenant-scoped. The same user can be `ORG_ADMIN` in tenant A and `READ_ONLY` in tenant B because the active tenant context is part of the token and membership.
+
+## Database Summary
+
+Core tables:
+- `organizations`, `users`, `organization_memberships`
+- `roles`, `permissions`, `role_permissions`
+- `refresh_tokens`
+- `audit_events`
+- `projects`
+
+Seed data creates two tenants, multiple users, roles, permissions, memberships, and isolated sample projects.
+
+## API Examples
+
+```bash
+curl -X POST http://localhost:3000/api/v1/auth/login \
+  -H 'content-type: application/json' \
+  -d '{"email":"admin@acme.test","password":"ChangeMe123!acme"}'
+```
+
+```bash
+curl http://localhost:3000/api/v1/projects \
+  -H "authorization: Bearer $ACCESS_TOKEN"
+```
+
+OpenAPI JSON is available at:
+
+```text
+GET /api/v1/openapi.json
+```
+
+Operational endpoints:
+
+```text
+GET /health
+GET /health/live
+GET /health/ready
+GET /metrics
+```
+
+## Local Setup
+
+Requirements:
+- Node.js 20+
+- Docker with Compose
+
+```bash
+npm install
+cp .env.example .env
+docker compose up -d db
+npm run prisma:generate
+npm run prisma:migrate
+npm run prisma:seed
+npm run start:dev
+```
+
+The API runs on `http://localhost:3000`.
+
+## Verification
+
+```bash
+npm run lint
+npm run test
+npm run test:e2e
+npm run build
+npm run security:audit
+```
+
+The test suite includes unit tests for services and guards plus e2e coverage for invalid JWTs, missing permissions, OpenAPI exposure, and tenant-scoped object access.
+
+## CI/CD
+
+GitHub Actions installs dependencies, generates Prisma client code, applies migrations against Postgres, seeds data, runs lint/typecheck/build, executes unit and e2e tests, and runs a high-severity dependency audit.
+
+## Tradeoffs
+
+- This demo uses a shared schema instead of database-per-tenant isolation to keep local review simple.
+- Permission evaluation is deterministic from tenant role keys while role and permission tables make the model inspectable and extensible.
+- Refresh token rotation is implemented, but device/session management UI and risk-based authentication are out of scope.
+- OpenAPI is served as a lightweight JSON document instead of depending on Swagger UI runtime packages.
+
+## Production Hardening Checklist
+
+- Move secrets to a managed secret store.
+- Add managed rate limiting at the edge or API gateway.
+- Add OpenTelemetry traces and structured log export.
+- Add database row-level security if operating in a hostile SQL environment.
+- Add email verification, account recovery, and step-up authentication.
+- Add SCIM, SAML, and external OIDC provider integrations.
+- Add Microsoft Entra ID and Google Workspace provisioning examples.
+
+## More Docs
+
+- [Architecture](docs/ARCHITECTURE.md)
+- [Security](docs/SECURITY.md)
+- [Testing](docs/TESTING.md)
+- [API](docs/API.md)
+- [ADRs](docs/adr/0001-tenant-scoped-rbac.md)

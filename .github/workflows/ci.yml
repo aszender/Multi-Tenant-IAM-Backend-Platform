@@ -29,6 +29,7 @@ jobs:
       DATABASE_URL: postgresql://postgres:postgres@localhost:5432/portfolio_test?schema=public
       JWT_ACCESS_SECRET: 01234567890123456789012345678901
       JWT_ACCESS_TTL_SECONDS: 900
+      JWT_REFRESH_TTL_SECONDS: 604800
 
     steps:
       - name: Checkout
@@ -49,14 +50,23 @@ jobs:
       - name: Prisma migrate (deploy)
         run: npm run db:migrate:deploy
 
+      - name: Prisma seed
+        run: npm run prisma:seed
+
       - name: Lint
         run: npm run lint
 
       - name: Typecheck
         run: npm run typecheck
 
+      - name: Build
+        run: npm run build
+
       - name: Unit tests
         run: npm test
 
       - name: E2E tests
         run: npm run test:e2e
+
+      - name: Dependency audit
+        run: npm run security:audit

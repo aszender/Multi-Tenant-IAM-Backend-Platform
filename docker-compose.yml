@@ -25,6 +25,7 @@ services:
       DATABASE_URL: postgresql://postgres:postgres@db:5432/portfolio?schema=public
       JWT_ACCESS_SECRET: ${JWT_ACCESS_SECRET:-01234567890123456789012345678901}
       JWT_ACCESS_TTL_SECONDS: 900
+      JWT_REFRESH_TTL_SECONDS: 604800
     ports:
       - "3000:3000"
     depends_on:
