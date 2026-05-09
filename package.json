@@ -24,9 +24,6 @@
     "db:seed": "ts-node prisma/seed.ts",
     "security:audit": "npm audit --audit-level=high"
   },
-  "prisma": {
-    "seed": "ts-node prisma/seed.ts"
-  },
   "dependencies": {
     "@nestjs/common": "^10.4.16",
     "@nestjs/config": "^3.2.3",
