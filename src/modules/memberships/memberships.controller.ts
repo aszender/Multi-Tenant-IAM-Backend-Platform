@@ -1,14 +1,4 @@
-import {
-  Body,
-  Controller,
-  Delete,
-  Get,
-  Param,
-  ParseUUIDPipe,
-  Patch,
-  Post,
-  UseGuards,
-} from '@nestjs/common';
+import { Body, Controller, Delete, Get, Param, ParseUUIDPipe, Patch, UseGuards } from '@nestjs/common';
 import type { OrganizationRole } from '@prisma/client';
 
 import { PERMISSIONS } from '../../common/authorization/permissions';
@@ -17,15 +7,13 @@ import { RequirePermissions } from '../../common/decorators/permissions.decorato
 import { PermissionsGuard } from '../../common/guards/permissions.guard';
 import { JwtAuthGuard } from '../auth/guards/jwt-auth.guard';
 import type { AuthenticatedRequestUser } from '../auth/types/authenticated-request-user';
+import { ListUsersResponseDto } from '../users/dto/list-users.dto';
+import { UpdateUserRoleRequestDto } from '../users/dto/update-user-role.dto';
+import { UsersService } from '../users/users.service';
 
-import { CreateUserRequestDto, CreateUserResponseDto } from './dto/create-user.dto';
-import { ListUsersResponseDto } from './dto/list-users.dto';
-import { UpdateUserRoleRequestDto } from './dto/update-user-role.dto';
-import { UsersService } from './users.service';
-
-@Controller('users')
+@Controller('memberships')
 @UseGuards(JwtAuthGuard, PermissionsGuard)
-export class UsersController {
+export class MembershipsController {
   constructor(private readonly usersService: UsersService) {}
 
   @Get()
@@ -40,21 +28,6 @@ export class UsersController {
         joinedAt: m.joinedAt.toISOString(),
       })),
     };
-  }
-
-  @Post()
-  @RequirePermissions(PERMISSIONS.USERS_MANAGE)
-  async create(
-    @CurrentUser() user: AuthenticatedRequestUser,
-    @Body() dto: CreateUserRequestDto,
-  ): Promise<CreateUserResponseDto> {
-    const role: OrganizationRole = (dto.role ?? 'ORG_USER') as OrganizationRole;
-    const result = await this.usersService.addUserToOrg(user, {
-      email: dto.email,
-      password: dto.password,
-      role,
-    });
-    return { userId: result.userId };
   }
 
   @Patch(':userId/role')

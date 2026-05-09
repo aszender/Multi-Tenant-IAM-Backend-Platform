@@ -3,17 +3,23 @@ import { ConfigService } from '@nestjs/config';
 import { JwtModule } from '@nestjs/jwt';
 
 import type { Env } from '../../config/env.schema';
+import { AuditModule } from '../audit/audit.module';
+import { RolesModule } from '../roles/roles.module';
 
 import { AuthController } from './auth.controller';
 import { AuthService } from './auth.service';
+import { AuthRateLimitGuard } from './guards/auth-rate-limit.guard';
 import { PasswordService } from './password.service';
 import { MembershipsRepository } from './repositories/memberships.repository';
 import { OrganizationsRepository } from './repositories/organizations.repository';
+import { RefreshTokensRepository } from './repositories/refresh-tokens.repository';
 import { UsersRepository } from './repositories/users.repository';
 import { JwtStrategy } from './strategies/jwt.strategy';
 
 @Module({
   imports: [
+    AuditModule,
+    RolesModule,
     JwtModule.registerAsync({
       inject: [ConfigService],
       useFactory: (config: ConfigService<Env, true>) => ({
@@ -29,9 +35,11 @@ import { JwtStrategy } from './strategies/jwt.strategy';
     AuthService,
     PasswordService,
     JwtStrategy,
+    AuthRateLimitGuard,
     UsersRepository,
     OrganizationsRepository,
     MembershipsRepository,
+    RefreshTokensRepository,
   ],
   exports: [JwtModule],
 })

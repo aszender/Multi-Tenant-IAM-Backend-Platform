@@ -1,4 +1,4 @@
-import { IsEmail, IsNotEmpty, IsString, MinLength } from 'class-validator';
+import { IsEmail, IsNotEmpty, IsString, Matches, MinLength } from 'class-validator';
 
 export class RegisterRequestDto {
   @IsEmail()
@@ -6,6 +6,9 @@ export class RegisterRequestDto {
 
   @IsString()
   @MinLength(12)
+  @Matches(/^(?=.*[a-z])(?=.*[A-Z])(?=.*\d).+$/, {
+    message: 'password must include lowercase, uppercase, and numeric characters',
+  })
   password!: string;
 
   @IsString()
@@ -17,4 +20,7 @@ export class RegisterResponseDto {
   userId!: string;
   organizationId!: string;
   accessToken!: string;
+  refreshToken!: string;
+  tokenType!: 'Bearer';
+  expiresInSeconds!: number;
 }

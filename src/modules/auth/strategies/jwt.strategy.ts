@@ -4,6 +4,7 @@ import { PassportStrategy } from '@nestjs/passport';
 import { ExtractJwt, Strategy } from 'passport-jwt';
 
 import type { Env } from '../../../config/env.schema';
+import { getPermissionsForRole } from '../../../common/authorization/permissions';
 import type { AuthenticatedRequestUser } from '../types/authenticated-request-user';
 import type { JwtPayload } from '../types/jwt-payload';
 
@@ -26,6 +27,7 @@ export class JwtStrategy extends PassportStrategy(Strategy) {
       email: payload.email,
       organizationId: payload.orgId,
       role: payload.role,
+      permissions: getPermissionsForRole(payload.role),
     };
   }
 }

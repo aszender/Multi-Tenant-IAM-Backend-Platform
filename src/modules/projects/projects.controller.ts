@@ -11,8 +11,9 @@ import {
 } from '@nestjs/common';
 
 import { CurrentUser } from '../../common/decorators/current-user.decorator';
-import { Roles } from '../../common/decorators/roles.decorator';
-import { RolesGuard } from '../../common/guards/roles.guard';
+import { PERMISSIONS } from '../../common/authorization/permissions';
+import { RequirePermissions } from '../../common/decorators/permissions.decorator';
+import { PermissionsGuard } from '../../common/guards/permissions.guard';
 import { JwtAuthGuard } from '../auth/guards/jwt-auth.guard';
 import type { AuthenticatedRequestUser } from '../auth/types/authenticated-request-user';
 
@@ -44,12 +45,12 @@ function toProjectDto(row: {
 }
 
 @Controller('projects')
-@UseGuards(JwtAuthGuard, RolesGuard)
+@UseGuards(JwtAuthGuard, PermissionsGuard)
 export class ProjectsController {
   constructor(private readonly projectsService: ProjectsService) {}
 
   @Post()
-  @Roles('ORG_ADMIN', 'ORG_USER')
+  @RequirePermissions(PERMISSIONS.PROJECTS_WRITE)
   async create(
     @CurrentUser() user: AuthenticatedRequestUser,
     @Body() dto: CreateProjectRequestDto,
@@ -59,14 +60,14 @@ export class ProjectsController {
   }
 
   @Get()
-  @Roles('ORG_ADMIN', 'ORG_USER', 'READ_ONLY')
+  @RequirePermissions(PERMISSIONS.PROJECTS_READ)
   async list(@CurrentUser() user: AuthenticatedRequestUser): Promise<ListProjectsResponseDto> {
     const rows = await this.projectsService.list(user);
     return { projects: rows.map(toProjectDto) };
   }
 
   @Get(':id')
-  @Roles('ORG_ADMIN', 'ORG_USER', 'READ_ONLY')
+  @RequirePermissions(PERMISSIONS.PROJECTS_READ)
   async get(
     @CurrentUser() user: AuthenticatedRequestUser,
     @Param('id', new ParseUUIDPipe({ version: '4' })) id: string,
@@ -76,7 +77,7 @@ export class ProjectsController {
   }
 
   @Patch(':id')
-  @Roles('ORG_ADMIN', 'ORG_USER')
+  @RequirePermissions(PERMISSIONS.PROJECTS_WRITE)
   async update(
     @CurrentUser() user: AuthenticatedRequestUser,
     @Param('id', new ParseUUIDPipe({ version: '4' })) id: string,
@@ -87,7 +88,7 @@ export class ProjectsController {
   }
 
   @Delete(':id')
-  @Roles('ORG_ADMIN')
+  @RequirePermissions(PERMISSIONS.PROJECTS_DELETE)
   async remove(
     @CurrentUser() user: AuthenticatedRequestUser,
     @Param('id', new ParseUUIDPipe({ version: '4' })) id: string,

@@ -6,8 +6,10 @@ import {
 } from '@nestjs/common';
 import { Prisma, type OrganizationRole } from '@prisma/client';
 
+import { AuditService } from '../audit/audit.service';
 import { PasswordService } from '../auth/password.service';
 import type { AuthenticatedRequestUser } from '../auth/types/authenticated-request-user';
+import { RolesService } from '../roles/roles.service';
 
 import { UsersRepository } from './users.repository';
 
@@ -16,6 +18,8 @@ export class UsersService {
   constructor(
     private readonly usersRepository: UsersRepository,
     private readonly passwordService: PasswordService,
+    private readonly auditService: AuditService,
+    private readonly rolesService: RolesService,
   ) {}
 
   async listMembers(currentUser: AuthenticatedRequestUser) {
@@ -31,14 +35,25 @@ export class UsersService {
     }
 
     const passwordHash = await this.passwordService.hashPassword(params.password);
+    const roles = await this.rolesService.ensureTenantDefaults(currentUser.organizationId);
 
     try {
-      return await this.usersRepository.createOrAttachUserToOrg({
+      const created = await this.usersRepository.createOrAttachUserToOrg({
         organizationId: currentUser.organizationId,
         email: params.email,
         passwordHash,
         role: params.role,
+        roleId: roles.get(params.role),
       });
+      await this.auditService.record({
+        organizationId: currentUser.organizationId,
+        actorUserId: currentUser.userId,
+        action: 'MEMBERSHIP_CREATED',
+        resourceType: 'membership',
+        resourceId: created.userId,
+        metadata: { email: params.email, role: params.role },
+      });
+      return created;
     } catch (err) {
       if (err instanceof Prisma.PrismaClientKnownRequestError) {
         if (err.code === 'P2002') {
@@ -85,6 +100,15 @@ export class UsersService {
       throw new NotFoundException('Membership not found.');
     }
 
+    await this.auditService.record({
+      organizationId: currentUser.organizationId,
+      actorUserId: currentUser.userId,
+      action: 'ROLE_CHANGED',
+      resourceType: 'membership',
+      resourceId: targetUserId,
+      metadata: { previousRole: membership.role, nextRole: role },
+    });
+
     return { updated: true };
   }
 
@@ -117,6 +141,14 @@ export class UsersService {
     if (!deleted) {
       throw new NotFoundException('Membership not found.');
     }
+
+    await this.auditService.record({
+      organizationId: currentUser.organizationId,
+      actorUserId: currentUser.userId,
+      action: 'MEMBERSHIP_REMOVED',
+      resourceType: 'membership',
+      resourceId: targetUserId,
+    });
 
     return { deleted: true };
   }

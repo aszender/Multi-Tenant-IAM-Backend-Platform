@@ -9,9 +9,11 @@ export function validateEnv(config: Record<string, unknown>) {
     const candidate = {
       NODE_ENV: config.NODE_ENV,
       PORT: config.PORT,
+      CORS_ORIGIN: config.CORS_ORIGIN,
       DATABASE_URL: config.DATABASE_URL,
       JWT_ACCESS_SECRET: config.JWT_ACCESS_SECRET,
       JWT_ACCESS_TTL_SECONDS: config.JWT_ACCESS_TTL_SECONDS,
+      JWT_REFRESH_TTL_SECONDS: config.JWT_REFRESH_TTL_SECONDS,
     };
 
     return envSchema.parse(candidate);

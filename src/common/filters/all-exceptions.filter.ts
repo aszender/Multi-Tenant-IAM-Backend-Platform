@@ -12,6 +12,7 @@ type ErrorResponseBody = {
   error: string;
   message: string;
   path: string;
+  correlationId: string;
   timestamp: string;
 };
 
@@ -55,6 +56,10 @@ export class AllExceptionsFilter implements ExceptionFilter {
 
     const timestamp = new Date().toISOString();
     const path = request.originalUrl ?? request.url;
+    const correlationId =
+      typeof request.headers['x-correlation-id'] === 'string'
+        ? request.headers['x-correlation-id']
+        : 'unknown';
 
     if (exception instanceof HttpException) {
       const statusCode = exception.getStatus();
@@ -68,6 +73,7 @@ export class AllExceptionsFilter implements ExceptionFilter {
         error,
         message,
         path,
+        correlationId,
         timestamp,
       };
 
@@ -80,6 +86,7 @@ export class AllExceptionsFilter implements ExceptionFilter {
       error: 'InternalServerError',
       message: 'An unexpected error occurred.',
       path,
+      correlationId,
       timestamp,
     };
 

@@ -62,6 +62,7 @@ export class UsersRepository {
     email: string;
     passwordHash: string;
     role: OrganizationRole;
+    roleId?: string;
   }): Promise<{ userId: string }>
  {
     const existingUser = await this.prisma.user.findUnique({
@@ -94,6 +95,7 @@ export class UsersRepository {
           organizationId: params.organizationId,
           userId,
           role: params.role,
+          roleId: params.roleId,
         },
         select: { id: true },
       });

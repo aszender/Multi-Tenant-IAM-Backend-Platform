@@ -50,4 +50,16 @@ export class OrganizationsRepository {
 
     return result;
   }
+
+  async setAdminRoleId(params: { organizationId: string; userId: string; roleId: string }) {
+    await this.prisma.organizationMembership.update({
+      where: {
+        organizationId_userId: {
+          organizationId: params.organizationId,
+          userId: params.userId,
+        },
+      },
+      data: { roleId: params.roleId },
+    });
+  }
 }

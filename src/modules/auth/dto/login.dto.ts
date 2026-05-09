@@ -1,4 +1,4 @@
-import { IsEmail, IsOptional, IsString, MinLength } from 'class-validator';
+import { IsEmail, IsOptional, IsString, IsUUID, MinLength } from 'class-validator';
 
 export class LoginRequestDto {
   @IsEmail()
@@ -9,7 +9,7 @@ export class LoginRequestDto {
   password!: string;
 
   @IsOptional()
-  @IsString()
+  @IsUUID('4')
   organizationId?: string;
 }
 
@@ -18,4 +18,21 @@ export class LoginResponseDto {
   organizationId!: string;
   role!: 'ORG_ADMIN' | 'ORG_USER' | 'READ_ONLY';
   accessToken!: string;
+  refreshToken!: string;
+  tokenType!: 'Bearer';
+  expiresInSeconds!: number;
+}
+
+export class RefreshTokenRequestDto {
+  @IsString()
+  @MinLength(32)
+  refreshToken!: string;
+}
+
+export class RefreshTokenResponseDto extends LoginResponseDto {}
+
+export class LogoutRequestDto {
+  @IsString()
+  @MinLength(32)
+  refreshToken!: string;
 }

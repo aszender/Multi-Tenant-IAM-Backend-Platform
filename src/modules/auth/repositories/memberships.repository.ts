@@ -7,9 +7,9 @@ import { PrismaService } from '../../../database/prisma.service';
 export class MembershipsRepository {
   constructor(private readonly prisma: PrismaService) {}
 
-  async create(organizationId: string, userId: string, role: OrganizationRole) {
+  async create(organizationId: string, userId: string, role: OrganizationRole, roleId?: string) {
     return await this.prisma.organizationMembership.create({
-      data: { organizationId, userId, role },
+      data: { organizationId, userId, role, roleId },
       select: { id: true, organizationId: true, userId: true, role: true },
     });
   }
@@ -19,6 +19,21 @@ export class MembershipsRepository {
       where: { userId },
       select: { organizationId: true, role: true },
       orderBy: { createdAt: 'asc' },
+    });
+  }
+
+  async findForUserInOrg(params: { userId: string; organizationId: string }) {
+    return await this.prisma.organizationMembership.findUnique({
+      where: {
+        organizationId_userId: {
+          organizationId: params.organizationId,
+          userId: params.userId,
+        },
+      },
+      select: {
+        organizationId: true,
+        role: true,
+      },
     });
   }
 }
