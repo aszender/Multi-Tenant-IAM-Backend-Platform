@@ -1,6 +1,8 @@
+import { UnauthorizedException } from '@nestjs/common';
 import { ConfigService } from '@nestjs/config';
 import { JwtService } from '@nestjs/jwt';
 import { Test } from '@nestjs/testing';
+import type { OrganizationRole } from '@prisma/client';
 
 import { PrismaService } from '../../database/prisma.service';
 import { AuditService } from '../audit/audit.service';
@@ -16,6 +18,11 @@ import { UsersRepository } from './repositories/users.repository';
 describe('AuthService', () => {
   async function createService(overrides?: {
     findByEmail?: UsersRepository['findByEmail'];
+    findActiveByHash?: RefreshTokensRepository['findActiveByHash'];
+    findForUserInOrg?: MembershipsRepository['findForUserInOrg'];
+    createRefreshToken?: RefreshTokensRepository['create'];
+    revokeRefreshToken?: RefreshTokensRepository['revoke'];
+    recordAudit?: AuditService['record'];
   }) {
     const prismaMock = {
       $transaction: async (fn: () => Promise<unknown>) => fn(),
@@ -49,7 +56,10 @@ describe('AuthService', () => {
       create: async () => ({ id: 'o1', name: 'Org' }),
     };
 
-    const membershipsRepoMock: Pick<MembershipsRepository, 'create' | 'listForUser'> = {
+    const membershipsRepoMock: Pick<
+      MembershipsRepository,
+      'create' | 'listForUser' | 'findForUserInOrg'
+    > = {
       create: async () => ({
         id: 'm1',
         organizationId: 'o1',
@@ -57,15 +67,18 @@ describe('AuthService', () => {
         role: 'ORG_ADMIN' as const,
       }),
       listForUser: async () => [{ organizationId: 'o1', role: 'ORG_ADMIN' as const }],
+      findForUserInOrg:
+        overrides?.findForUserInOrg ??
+        (async () => ({ organizationId: 'o1', role: 'ORG_ADMIN' as OrganizationRole })),
     };
 
     const refreshTokensRepoMock: Pick<
       RefreshTokensRepository,
       'create' | 'findActiveByHash' | 'revoke'
     > = {
-      create: async () => ({ id: 'rt1' }),
-      findActiveByHash: async () => null,
-      revoke: async () => undefined,
+      create: overrides?.createRefreshToken ?? (async () => ({ id: 'rt1' })),
+      findActiveByHash: overrides?.findActiveByHash ?? (async () => null),
+      revoke: overrides?.revokeRefreshToken ?? (async () => undefined),
     };
 
     const rolesMock: Pick<RolesService, 'ensureTenantDefaults'> = {
@@ -73,7 +86,7 @@ describe('AuthService', () => {
     };
 
     const auditMock: Pick<AuditService, 'record'> = {
-      record: async () => undefined,
+      record: overrides?.recordAudit ?? (async () => undefined),
     };
 
     const moduleRef = await Test.createTestingModule({
@@ -130,5 +143,84 @@ describe('AuthService', () => {
     expect(result.role).toBe('ORG_ADMIN');
     expect(result.accessToken).toBe('token');
     expect(result.refreshToken).toEqual(expect.any(String));
+  });
+
+  it('rotates refresh tokens, revokes the old token, and records audit', async () => {
+    const revoke = jest.fn(async () => undefined);
+    const audit = jest.fn(async () => undefined);
+    const service = await createService({
+      findActiveByHash: async () => ({
+        id: 'old-refresh-token-id',
+        userId: 'u1',
+        organizationId: 'o1',
+        user: {
+          id: 'u1',
+          email: 'a@b.com',
+          isActive: true,
+        },
+      }),
+      createRefreshToken: async () => ({ id: 'new-refresh-token-id' }),
+      revokeRefreshToken: revoke,
+      recordAudit: audit,
+    });
+
+    const result = await service.refresh({ refreshToken: 'valid-refresh-token-value-123456' });
+
+    expect(result.userId).toBe('u1');
+    expect(result.organizationId).toBe('o1');
+    expect(result.accessToken).toBe('token');
+    expect(result.refreshToken).toEqual(expect.any(String));
+    expect(revoke).toHaveBeenCalledWith({
+      tokenId: 'old-refresh-token-id',
+      replacedByTokenId: 'new-refresh-token-id',
+    });
+    expect(audit).toHaveBeenCalledWith(
+      expect.objectContaining({
+        action: 'REFRESH_TOKEN_ROTATED',
+        organizationId: 'o1',
+        actorUserId: 'u1',
+        resourceId: 'old-refresh-token-id',
+      }),
+    );
+  });
+
+  it('denies reuse of an old revoked refresh token', async () => {
+    const service = await createService({
+      findActiveByHash: async () => null,
+    });
+
+    await expect(
+      service.refresh({ refreshToken: 'revoked-refresh-token-value-123456' }),
+    ).rejects.toBeInstanceOf(UnauthorizedException);
+  });
+
+  it('denies expired refresh tokens', async () => {
+    const service = await createService({
+      findActiveByHash: async () => null,
+    });
+
+    await expect(
+      service.refresh({ refreshToken: 'expired-refresh-token-value-123456' }),
+    ).rejects.toBeInstanceOf(UnauthorizedException);
+  });
+
+  it('denies refresh when tenant membership no longer exists', async () => {
+    const service = await createService({
+      findActiveByHash: async () => ({
+        id: 'refresh-token-id',
+        userId: 'u1',
+        organizationId: 'o1',
+        user: {
+          id: 'u1',
+          email: 'a@b.com',
+          isActive: true,
+        },
+      }),
+      findForUserInOrg: async () => null,
+    });
+
+    await expect(
+      service.refresh({ refreshToken: 'orphan-refresh-token-value-123456' }),
+    ).rejects.toBeInstanceOf(UnauthorizedException);
   });
 });

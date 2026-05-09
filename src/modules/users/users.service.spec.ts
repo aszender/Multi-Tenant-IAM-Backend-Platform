@@ -100,4 +100,42 @@ describe('UsersService', () => {
       NotFoundException,
     );
   });
+
+  it('does not mutate a tenant B role assignment from a tenant A admin context', async () => {
+    const updateRole = jest.fn(async () => true);
+    const service = await createService({
+      findMembership: jest.fn(async (params) => {
+        expect(params).toEqual({
+          organizationId: 'o1',
+          userId: 'tenant-b-user',
+        });
+        return null;
+      }),
+      updateRole,
+    });
+
+    await expect(
+      service.updateMemberRole(admin, 'tenant-b-user', 'ORG_USER'),
+    ).rejects.toBeInstanceOf(NotFoundException);
+    expect(updateRole).not.toHaveBeenCalled();
+  });
+
+  it('does not remove a tenant B membership from a tenant A admin context', async () => {
+    const removeMembership = jest.fn(async () => true);
+    const service = await createService({
+      findMembership: jest.fn(async (params) => {
+        expect(params).toEqual({
+          organizationId: 'o1',
+          userId: 'tenant-b-user',
+        });
+        return null;
+      }),
+      removeMembership,
+    });
+
+    await expect(service.removeMember(admin, 'tenant-b-user')).rejects.toBeInstanceOf(
+      NotFoundException,
+    );
+    expect(removeMembership).not.toHaveBeenCalled();
+  });
 });

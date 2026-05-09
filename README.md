@@ -1,63 +1,61 @@
 # Multi-Tenant IAM Backend Platform
 
-Production-oriented backend demo for a multi-tenant IAM platform built with **NestJS**, **TypeScript**, **PostgreSQL**, **Prisma**, **JWT**, tenant-scoped **RBAC permissions**, refresh-token rotation, audit logging, health checks, CI, Docker, and security-focused tests.
+Portfolio backend demo for a multi-tenant IAM platform using **NestJS**, **TypeScript**, **PostgreSQL**, **Prisma**, **JWT**, tenant-scoped RBAC permissions, refresh-token rotation, audit logging, Docker, CI, and security-focused tests.
 
-This is not a commercial IAM product and does not claim formal NIST compliance. It is designed to demonstrate senior backend architecture, tenant isolation, authorization, auditability, and testability for identity, integrations, enterprise SaaS, and platform engineering roles.
+This is not a commercial IAM product and does not claim regulatory or NIST compliance. The goal is to show backend judgment around identity, tenant isolation, authorization, auditability, and testability.
 
-## 5-Minute Review
+## What This Demonstrates
 
-**What this proves:** the backend handles the core IAM risks reviewers care about: authentication, authorization, tenant isolation, object-level access control, auditability, and automated verification.
-
-**Best signals in the repo:**
-- Clean NestJS module boundaries: `auth`, `tenants`, `users`, `memberships`, `roles`, `permissions`, `projects`, `audit`, `health`, `database`, `config`, `common`.
-- Tenant isolation is enforced in services and repositories, not trusted from route params.
-- Permission guards use explicit permissions like `projects:read`, `projects:write`, `users:manage`, and `audit:read`.
-- Refresh tokens are opaque, hashed at rest, and rotated on use.
-- Audit events are recorded for security-sensitive actions.
-- Tests cover invalid JWTs, missing permissions, tenant-scoped object access, and last-admin protections.
-- README claims are intentionally scoped to what the code implements.
+- Clean module boundaries for `auth`, `tenants`, `users`, `memberships`, `roles`, `permissions`, `projects`, `audit`, `health`, `database`, and shared `common` code.
+- JWT access-token validation plus opaque refresh tokens hashed at rest and rotated on use.
+- Tenant-scoped RBAC where the same user can have different roles in different tenants.
+- Permission guards using explicit permissions such as `projects:read`, `users:manage`, and `audit:read`.
+- Repository-level object isolation using both `organizationId` and resource id.
+- Defensive behavior for broken object-level authorization: cross-tenant object access returns `404`.
+- Audit events for login, refresh rotation, tenant/user/membership changes, and project mutations.
+- Tests for invalid JWTs, missing permissions, refresh-token rotation, expired/reused refresh tokens, audit creation, last-admin rules, and cross-tenant mutation denial.
 
 ## Architecture
 
 ```mermaid
 flowchart LR
-  Client["API Client"] --> Controllers["Controllers + DTO Validation"]
-  Controllers --> Guards["JWT Auth + Permission Guards"]
+  Client["Client"] --> Controllers["Controllers + DTOs"]
+  Controllers --> Guards["JWT + Permission Guards"]
   Guards --> Services["Application Services"]
   Services --> Repositories["Tenant-Scoped Repositories"]
   Repositories --> DB[("PostgreSQL / Prisma")]
   Services --> Audit["Audit Events"]
 ```
 
-Controllers handle HTTP concerns only. Services own application behavior and invariants. Repositories own Prisma access and must include `organizationId` for tenant-owned resources.
+Controllers handle HTTP and validation. Services enforce use-case rules. Repositories own Prisma queries and tenant scoping.
 
 ## Security Model
 
 - Passwords are hashed with Argon2.
-- Access tokens are short-lived JWTs with user id, email, active tenant id, and tenant role.
-- Refresh tokens are random opaque tokens stored only as SHA-256 hashes.
-- Refresh token rotation revokes the previous token on use.
-- Permission checks are route-level and explicit.
-- Tenant-owned reads, updates, and deletes are scoped by both resource id and tenant id.
-- Cross-tenant object access returns `404 Not Found` to avoid leaking object existence.
+- Access tokens include user id, email, active tenant id, and tenant role.
+- Refresh tokens are random opaque values stored only as SHA-256 hashes.
+- Refresh-token reuse is denied after rotation because the old token is revoked.
+- Expired refresh tokens are excluded by the repository query.
+- Tenant-owned reads, updates, and deletes are scoped by tenant id and object id.
 - Global validation rejects unknown request fields.
 - Error responses are consistent and include a correlation id.
 - Basic hardening includes CORS config, security headers, auth rate limiting, env validation, and no committed secrets.
 
+More detail: [SECURITY.md](SECURITY.md)
+
 ## Tenant And Authorization Model
 
-The platform uses shared-schema multi-tenancy with `organization_id` as the tenant boundary.
+Shared-schema tenancy uses `organization_id` as the tenant boundary.
 
 Built-in tenant roles:
-- `ORG_ADMIN`: tenant administration, users, roles, projects, audit.
-- `ORG_USER`: tenant/project read and project write.
+- `ORG_ADMIN`: tenant administration, users, memberships, projects, audit reads.
+- `ORG_USER`: user/project reads and project writes.
 - `READ_ONLY`: read-only tenant/project access.
 
-Roles are tenant-scoped. A user can be `ORG_ADMIN` in tenant A and `READ_ONLY` in tenant B because permissions are evaluated inside the active tenant context.
+Permissions are evaluated inside the active tenant context from the authenticated request.
 
-## Database Model
+## Core Tables
 
-Core tables:
 - `organizations`
 - `users`
 - `organization_memberships`
@@ -68,17 +66,11 @@ Core tables:
 - `audit_events`
 - `projects`
 
-Important constraints and indexes include tenant-aware project uniqueness, membership uniqueness per tenant/user, and audit indexes by tenant, actor, action, and timestamp.
-
-Seed data creates two tenants with separate users, roles, permissions, memberships, and projects to prove isolation.
+Seed data creates two isolated tenants, users, roles, permissions, memberships, and sample projects.
 
 ## API Surface
 
-Base path:
-
-```text
-/api/v1
-```
+Base path: `/api/v1`
 
 Key endpoints:
 - `POST /auth/register`
@@ -91,6 +83,7 @@ Key endpoints:
 - `POST /users`
 - `GET /memberships`
 - `PATCH /memberships/:userId/role`
+- `DELETE /memberships/:userId`
 - `GET /roles`
 - `GET /permissions`
 - `GET /projects`
@@ -110,7 +103,7 @@ Operational endpoints:
 ## Quickstart
 
 Requirements:
-- Node.js 20+
+- Node.js 20 (`.nvmrc` included)
 - Docker with Compose
 
 ```bash
@@ -123,12 +116,6 @@ npm run prisma:seed
 npm run start:dev
 ```
 
-API URL:
-
-```text
-http://localhost:3000
-```
-
 Seed users:
 
 ```text
@@ -139,7 +126,7 @@ admin@globex.test / ChangeMe123!globex
 viewer@globex.test / ChangeMe123!globex
 ```
 
-Login example:
+Login:
 
 ```bash
 curl -X POST http://localhost:3000/api/v1/auth/login \
@@ -147,7 +134,7 @@ curl -X POST http://localhost:3000/api/v1/auth/login \
   -d '{"email":"admin@acme.test","password":"ChangeMe123!acme"}'
 ```
 
-Tenant-scoped request:
+Use the returned access token:
 
 ```bash
 curl http://localhost:3000/api/v1/projects \
@@ -164,27 +151,11 @@ npm run build
 npm run security:audit
 ```
 
-CI runs install, Prisma generate, migrations, seed, lint, typecheck, build, unit tests, e2e tests, and high-severity dependency audit against PostgreSQL.
+`npm run security:audit` requires network access to the npm registry. In restricted environments it can fail with DNS or registry access errors even when the script is valid.
 
-## Key Tests
+## Tradeoffs
 
-- Invalid JWT is rejected.
-- Missing permission returns forbidden.
-- Tenant A cannot access tenant B project ids.
-- Project repository scopes point reads and updates by tenant id and object id.
-- Last tenant admin cannot be demoted or removed.
-- Health and OpenAPI endpoints are available.
-
-## Tradeoffs And Scope
-
-- Shared-schema tenancy was chosen for reviewer-friendly local setup; database-per-tenant would add operational complexity.
-- RBAC is implemented with explicit permissions and tenant memberships; custom roles can be added later.
-- NIST SP 800-63-4 is referenced only conceptually: password/session choices are aligned with modern guidance, but this project does not claim compliance.
-- External OIDC, SAML, SCIM, MFA, passkeys, Microsoft Entra ID, and Google Workspace integrations are intentionally out of scope for this demo, but the module boundaries are designed to support them later.
-
-## Recent Engineering Decisions
-
-- Prisma and PostgreSQL were chosen for strong relational constraints, migrations, and readable schema review.
-- Permission decorators replaced controller-local role logic to make authorization intent easy to scan.
-- Tenant-owned repositories require tenant scope to prevent broken object-level authorization.
-- Audit writes are best-effort so security logging failures do not take down the primary request path.
+- Shared-schema tenancy keeps local review simple; database-per-tenant isolation is out of scope.
+- RBAC is implemented with explicit permissions and tenant memberships; custom role editing can be added later.
+- External OIDC, SAML, SCIM, MFA, passkeys, Microsoft Entra ID, and Google Workspace integrations are intentionally out of scope.
+- Audit writes are best-effort so an audit storage failure does not take down the primary request path.
