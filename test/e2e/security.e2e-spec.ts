@@ -7,6 +7,7 @@ import { PrismaService } from '../../src/database/prisma.service';
 import { ProjectsRepository } from '../../src/modules/projects/projects.repository';
 
 import { applyTestAppConfig } from './apply-test-app-config';
+import { setupE2eEnv } from './test-env';
 
 describe('Security controls (e2e)', () => {
   let app: INestApplication;
@@ -14,15 +15,7 @@ describe('Security controls (e2e)', () => {
   const projectId = '11111111-1111-4111-8111-111111111111';
 
   beforeAll(async () => {
-    process.env.NODE_ENV = 'test';
-    process.env.PORT = '3001';
-    process.env.DATABASE_URL =
-      process.env.DATABASE_URL ??
-      'postgresql://postgres:postgres@localhost:5432/portfolio_test?schema=public';
-    process.env.JWT_ACCESS_SECRET =
-      process.env.JWT_ACCESS_SECRET ?? '01234567890123456789012345678901';
-    process.env.JWT_ACCESS_TTL_SECONDS = process.env.JWT_ACCESS_TTL_SECONDS ?? '900';
-    process.env.JWT_REFRESH_TTL_SECONDS = process.env.JWT_REFRESH_TTL_SECONDS ?? '604800';
+    setupE2eEnv();
 
     const { AppModule } = await import('../../src/app.module');
 

@@ -5,16 +5,13 @@ import request from 'supertest';
 import { PrismaService } from '../../src/database/prisma.service';
 
 import { applyTestAppConfig } from './apply-test-app-config';
+import { setupE2eEnv } from './test-env';
 
 describe('Health (e2e)', () => {
   let app: INestApplication;
 
   beforeAll(async () => {
-    process.env.NODE_ENV = 'test';
-    process.env.PORT = '3001';
-    process.env.DATABASE_URL = process.env.DATABASE_URL ?? 'postgresql://postgres:postgres@localhost:5432/portfolio_test?schema=public';
-    process.env.JWT_ACCESS_SECRET = process.env.JWT_ACCESS_SECRET ?? '01234567890123456789012345678901';
-    process.env.JWT_ACCESS_TTL_SECONDS = process.env.JWT_ACCESS_TTL_SECONDS ?? '900';
+    setupE2eEnv();
 
     // Import after env setup so AppConfigModule validation sees these values.
     const { AppModule } = await import('../../src/app.module');
