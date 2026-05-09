@@ -3,6 +3,7 @@ import { Test } from '@nestjs/testing';
 import request from 'supertest';
 
 import { PrismaService } from '../../src/database/prisma.service';
+
 import { applyTestAppConfig } from './apply-test-app-config';
 
 describe('Health (e2e)', () => {

@@ -3,8 +3,8 @@ import { ConfigService } from '@nestjs/config';
 import { PassportStrategy } from '@nestjs/passport';
 import { ExtractJwt, Strategy } from 'passport-jwt';
 
-import type { Env } from '../../../config/env.schema';
 import { getPermissionsForRole } from '../../../common/authorization/permissions';
+import type { Env } from '../../../config/env.schema';
 import type { AuthenticatedRequestUser } from '../types/authenticated-request-user';
 import type { JwtPayload } from '../types/jwt-payload';
 

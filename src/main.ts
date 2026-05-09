@@ -1,9 +1,10 @@
 import 'reflect-metadata';
 
+import { randomUUID } from 'node:crypto';
+
 import { RequestMethod, ValidationPipe } from '@nestjs/common';
 import { NestFactory } from '@nestjs/core';
 import type { NextFunction, Request, Response } from 'express';
-import { randomUUID } from 'node:crypto';
 
 import { AppModule } from './app.module';
 import { AllExceptionsFilter } from './common/filters/all-exceptions.filter';

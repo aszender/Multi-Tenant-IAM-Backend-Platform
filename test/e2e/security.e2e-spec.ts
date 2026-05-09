@@ -5,6 +5,7 @@ import request from 'supertest';
 
 import { PrismaService } from '../../src/database/prisma.service';
 import { ProjectsRepository } from '../../src/modules/projects/projects.repository';
+
 import { applyTestAppConfig } from './apply-test-app-config';
 
 describe('Security controls (e2e)', () => {

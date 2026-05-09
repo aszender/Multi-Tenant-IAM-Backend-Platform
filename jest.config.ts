@@ -9,6 +9,8 @@ const config: Config = {
   },
   collectCoverageFrom: ['src/**/*.(t|j)s'],
   coverageDirectory: './coverage',
+  modulePathIgnorePatterns: ['<rootDir>/.claude/', '<rootDir>/dist/'],
+  testPathIgnorePatterns: ['<rootDir>/.claude/', '<rootDir>/dist/'],
   testEnvironment: 'node',
 };
 

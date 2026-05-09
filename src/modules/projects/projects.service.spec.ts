@@ -1,8 +1,8 @@
 import { NotFoundException } from '@nestjs/common';
 import { Test } from '@nestjs/testing';
 
-import type { AuthenticatedRequestUser } from '../auth/types/authenticated-request-user';
 import { AuditService } from '../audit/audit.service';
+import type { AuthenticatedRequestUser } from '../auth/types/authenticated-request-user';
 
 import { ProjectsRepository } from './projects.repository';
 import { ProjectsService } from './projects.service';
