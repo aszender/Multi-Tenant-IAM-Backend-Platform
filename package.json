@@ -2,7 +2,7 @@
   "name": "multi-tenant-iam-platform",
   "version": "1.0.0",
   "private": true,
-  "description": "Portfolio demo for a multi-tenant IAM backend platform (NestJS + PostgreSQL).",
+  "description": "Production-oriented reference implementation of a multi-tenant IAM backend platform.",
   "license": "UNLICENSED",
   "engines": {
     "node": ">=20"

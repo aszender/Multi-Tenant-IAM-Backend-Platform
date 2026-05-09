@@ -8,7 +8,7 @@ The system is a NestJS and TypeScript backend that models the core identity and 
 
 The hard part is not issuing tokens or serving CRUD endpoints. It is ensuring that once a user belongs to more than one tenant, every request is evaluated in the right tenant context, every repository query is scoped correctly, and every permission decision stays consistent across the controller, service, and persistence layers. That is where many IAM backends fail, especially when route parameters are trusted too early or authorization is treated as a global role lookup instead of a tenant-scoped decision.
 
-This backend makes those risks visible. It shows how to protect object-level access, rotate refresh tokens safely, enforce permission-based API boundaries, retain audit evidence for sensitive actions, and expose health, readiness, and metrics endpoints suitable for operations. It also demonstrates the practical value of strict request validation and repository-level tenant filtering when the same resource type exists in multiple tenants.
+This backend makes those risks visible. It covers object-level access control, safe refresh token rotation, permission-based API boundaries, audit evidence for sensitive actions, and operational health, readiness, and metrics endpoints. It also shows the practical value of strict request validation and repository-level tenant filtering when the same resource type exists in multiple tenants.
 
 Technology used in the implementation:
 
@@ -24,7 +24,7 @@ Technology used in the implementation:
 - Health, readiness, and metrics endpoints for operational checks.
 - Automated tests for authorization, token handling, tenant isolation, and audit behavior.
 
-## What This Demonstrates
+## What This Covers
 
 - Tenant isolation across controller, service, and repository boundaries.
 - Object-level authorization instead of trusting route IDs alone.
@@ -195,7 +195,7 @@ Main tables:
 - `role_permissions` maps roles to permissions.
 - `refresh_tokens` stores hashed refresh tokens, expiry, and revocation state.
 - `audit_events` stores security and operational audit records.
-- `projects` stores sample tenant-owned resources and demonstrates isolation rules.
+- `projects` stores reference tenant-owned resources and enforces isolation rules.
 
 Important constraints and patterns:
 
@@ -205,7 +205,7 @@ Important constraints and patterns:
 - `created_at` and `updated_at` timestamps support traceability and operational debugging.
 - Audit events preserve a durable trail of important security actions.
 
-The schema is intentionally readable rather than overloaded. It is sufficient to demonstrate multi-tenant IAM design without turning the repository into a full identity suite.
+The schema is intentionally readable rather than overloaded. It is sufficient to model multi-tenant IAM design without turning the repository into a full identity suite.
 
 ## Auditability
 
@@ -303,6 +303,18 @@ npm run security:audit
 ```
 
 The repository also includes repository-level tests for tenant scoping and refresh-token state transitions, plus e2e tests for invalid JWTs, permission checks, and cross-tenant access denial.
+
+## Verification
+
+Latest successful command results:
+
+- `npm run prisma:generate` - passed
+- `npm run lint` - passed
+- `npm run test` - 8 suites / 23 tests passed
+- `npm run test:e2e` - 2 suites / 5 tests passed
+- `npm run typecheck` - passed
+- `npm run build` - passed
+- `npm run security:audit` - 0 vulnerabilities
 
 ## Local Setup
 
