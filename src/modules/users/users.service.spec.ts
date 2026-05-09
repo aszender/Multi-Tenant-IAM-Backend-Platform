@@ -3,6 +3,8 @@ import { Test } from '@nestjs/testing';
 
 import { PasswordService } from '../auth/password.service';
 import type { AuthenticatedRequestUser } from '../auth/types/authenticated-request-user';
+import { AuditService } from '../audit/audit.service';
+import { RolesService } from '../roles/roles.service';
 
 import { UsersRepository } from './users.repository';
 import { UsersService } from './users.service';
@@ -13,6 +15,7 @@ describe('UsersService', () => {
     email: 'admin@x.com',
     organizationId: 'o1',
     role: 'ORG_ADMIN',
+    permissions: ['users:read', 'users:manage'],
   };
 
   const nonAdmin: AuthenticatedRequestUser = {
@@ -20,6 +23,7 @@ describe('UsersService', () => {
     email: 'user@x.com',
     organizationId: 'o1',
     role: 'ORG_USER',
+    permissions: ['users:read'],
   };
 
   async function createService(overrides?: Partial<UsersRepository>) {
@@ -36,12 +40,20 @@ describe('UsersService', () => {
     const passwordMock: Pick<PasswordService, 'hashPassword'> = {
       hashPassword: async () => 'hash',
     };
+    const auditMock: Pick<AuditService, 'record'> = {
+      record: async () => undefined,
+    };
+    const rolesMock: Pick<RolesService, 'ensureTenantDefaults'> = {
+      ensureTenantDefaults: async () => new Map([['ORG_USER', 'role-user']]),
+    };
 
     const moduleRef = await Test.createTestingModule({
       providers: [
         UsersService,
         { provide: UsersRepository, useValue: repoMock },
         { provide: PasswordService, useValue: passwordMock },
+        { provide: AuditService, useValue: auditMock },
+        { provide: RolesService, useValue: rolesMock },
       ],
     }).compile();
 

@@ -3,6 +3,7 @@ import { Test } from '@nestjs/testing';
 import request from 'supertest';
 
 import { PrismaService } from '../../src/database/prisma.service';
+import { applyTestAppConfig } from './apply-test-app-config';
 
 describe('Health (e2e)', () => {
   let app: INestApplication;
@@ -26,10 +27,12 @@ describe('Health (e2e)', () => {
       .useValue({
         $connect: async () => undefined,
         $disconnect: async () => undefined,
+        $queryRaw: async () => [{ '?column?': 1 }],
       })
       .compile();
 
     app = moduleRef.createNestApplication();
+    applyTestAppConfig(app);
     await app.init();
   });
 
@@ -44,6 +47,16 @@ describe('Health (e2e)', () => {
       .expect((res) => {
         expect(res.body.status).toBe('ok');
         expect(typeof res.body.timestamp).toBe('string');
+      });
+  });
+
+  it('GET /api/v1/openapi.json exposes API docs', async () => {
+    await request(app.getHttpServer())
+      .get('/api/v1/openapi.json')
+      .expect(200)
+      .expect((res) => {
+        expect(res.body.openapi).toBe('3.0.3');
+        expect(res.body.paths['/auth/login']).toBeDefined();
       });
   });
 });

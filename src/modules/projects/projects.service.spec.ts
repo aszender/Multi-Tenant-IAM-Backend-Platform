@@ -2,6 +2,7 @@ import { NotFoundException } from '@nestjs/common';
 import { Test } from '@nestjs/testing';
 
 import type { AuthenticatedRequestUser } from '../auth/types/authenticated-request-user';
+import { AuditService } from '../audit/audit.service';
 
 import { ProjectsRepository } from './projects.repository';
 import { ProjectsService } from './projects.service';
@@ -12,6 +13,7 @@ describe('ProjectsService', () => {
     email: 'a@b.com',
     organizationId: 'o1',
     role: 'ORG_USER',
+    permissions: ['projects:read', 'projects:write'],
   };
 
   it('scopes list by organizationId', async () => {
@@ -29,7 +31,11 @@ describe('ProjectsService', () => {
     };
 
     const moduleRef = await Test.createTestingModule({
-      providers: [ProjectsService, { provide: ProjectsRepository, useValue: repoMock }],
+      providers: [
+        ProjectsService,
+        { provide: ProjectsRepository, useValue: repoMock },
+        { provide: AuditService, useValue: { record: async () => undefined } },
+      ],
     }).compile();
 
     const service = moduleRef.get(ProjectsService);
@@ -52,7 +58,11 @@ describe('ProjectsService', () => {
     };
 
     const moduleRef = await Test.createTestingModule({
-      providers: [ProjectsService, { provide: ProjectsRepository, useValue: repoMock }],
+      providers: [
+        ProjectsService,
+        { provide: ProjectsRepository, useValue: repoMock },
+        { provide: AuditService, useValue: { record: async () => undefined } },
+      ],
     }).compile();
 
     const service = moduleRef.get(ProjectsService);
